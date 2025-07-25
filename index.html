@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pembukuan Konter Pulsa UMKM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -194,6 +195,7 @@
         .export-buttons {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
             margin-top: 20px;
         }
         
@@ -208,7 +210,7 @@
         .status-normal { background-color: rgba(255, 158, 0, 0.2); color: #ff9e00; }
         .status-loss { background-color: rgba(247, 37, 133, 0.2); color: #f72585; }
         
-        /* Notifikasi Ekspor */
+        /* Notifikasi Ekspor/Import */
         .export-notification {
             position: fixed;
             top: 50%;
@@ -283,13 +285,132 @@
             z-index: 999;
             display: none;
         }
+        
+        /* Input file tersembunyi */
+        #file-input {
+            display: none;
+        }
+        
+        /* Modal konfirmasi import */
+        .import-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            z-index: 1000;
+            width: 400px;
+            max-width: 90%;
+            display: none;
+        }
+        
+        .import-modal h3 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+        
+        .import-modal p {
+            margin-bottom: 20px;
+        }
+        
+        .import-modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        /* Backup section */
+        .backup-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .backup-section h3 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+        
+        .backup-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .btn-backup {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 15px;
+            font-weight: 500;
+            border-radius: 8px;
+        }
+        
+        .btn-export {
+            background-color: #4ade80;
+            color: white;
+            border: none;
+        }
+        
+        .btn-export:hover {
+            background-color: #22c55e;
+        }
+        
+        .btn-import {
+            background-color: #fbbf24;
+            color: white;
+            border: none;
+        }
+        
+        .btn-import:hover {
+            background-color: #f59e0b;
+        }
+        
+        .btn-excel {
+            background-color: #22c55e;
+            color: white;
+            border: none;
+        }
+        
+        .btn-excel:hover {
+            background-color: #16a34a;
+        }
+        
+        .btn-pdf {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+        }
+        
+        .btn-pdf:hover {
+            background-color: #dc2626;
+        }
+        
+        /* Button container */
+        .button-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
     <!-- Overlay untuk notifikasi -->
     <div class="notification-overlay" id="notification-overlay"></div>
     
-    <!-- Notifikasi Ekspor -->
+    <!-- Notifikasi Ekspor/Import -->
     <div class="export-notification" id="export-notification">
         <div class="notification-icon" id="notification-icon">📊</div>
         <div class="notification-title" id="notification-title">Sukses!</div>
@@ -297,14 +418,31 @@
         <button class="notification-button" onclick="closeNotification()">Mengerti</button>
     </div>
     
+    <!-- Modal konfirmasi import -->
+    <div class="import-modal" id="import-modal">
+        <h3>Konfirmasi Import Data</h3>
+        <p>Anda yakin ingin mengimpor data ini? Data saat ini akan digantikan dengan data dari file.</p>
+        <div class="import-modal-buttons">
+            <button class="btn btn-outline-secondary" onclick="cancelImport()">Batal</button>
+            <button class="btn btn-primary" onclick="confirmImport()">Ya, Import Data</button>
+        </div>
+    </div>
+    
+    <!-- Input file tersembunyi -->
+    <input type="file" id="file-input" accept=".json">
+    
     <!-- Header -->
     <div class="header">
         <div class="container">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
                 <h1 class="mb-0">📱 Pembukuan Konter Pulsa UMKM</h1>
-                <div class="d-flex">
-                    <button class="btn btn-light me-2" onclick="saveData()">💾 Simpan Data</button>
-                    <button class="btn btn-warning" onclick="resetData()">🔄 Reset Data</button>
+                <div class="header-buttons mt-2 mt-md-0">
+                    <button class="btn btn-light me-2" onclick="saveData()">
+                        <i class="fas fa-save me-1"></i> Simpan Data
+                    </button>
+                    <button class="btn btn-warning" onclick="resetData()">
+                        <i class="fas fa-redo me-1"></i> Reset Data
+                    </button>
                 </div>
             </div>
             <p class="mb-0 mt-2">Kelola keuangan dan stok voucher dengan pembukuan per bulan</p>
@@ -312,44 +450,63 @@
     </div>
     
     <div class="container">
+        <!-- Backup/Restore Section -->
+        <div class="backup-section">
+            <h3><i class="fas fa-database me-2"></i> Backup & Restore Data</h3>
+            <p>Lakukan backup data secara berkala untuk mencegah kehilangan data. Gunakan fitur restore untuk mengembalikan data dari backup.</p>
+            <div class="backup-buttons">
+                <button class="btn btn-backup btn-export" onclick="exportToJSON()">
+                    <i class="fas fa-file-export me-1"></i> Buat Backup
+                </button>
+                <button class="btn btn-backup btn-import" onclick="importData()">
+                    <i class="fas fa-file-import me-1"></i> Restore Backup
+                </button>
+                <button class="btn btn-backup btn-excel" onclick="exportToExcel()">
+                    <i class="fas fa-file-excel me-1"></i> Export Excel
+                </button>
+                <button class="btn btn-backup btn-pdf" onclick="exportToPDF()">
+                    <i class="fas fa-file-pdf me-1"></i> Export PDF
+                </button>
+            </div>
+        </div>
+        
         <!-- Pemilih Bulan -->
         <div class="month-selector">
-            <h4 class="mb-0">Pembukuan Bulan:</h4>
+            <h4 class="mb-0"><i class="fas fa-calendar-alt me-2"></i> Pembukuan Bulan:</h4>
             <select class="form-select" id="month-select" style="width: 200px;">
                 <!-- Opsi bulan akan diisi oleh JavaScript -->
             </select>
-            <button class="btn btn-success" onclick="addNewMonth()">📅 Buat Bulan Baru</button>
-            <button class="btn btn-info" onclick="generateClosingStatement()">📑 Closing Statement</button>
-            
-            <div class="export-buttons">
-                <button class="btn btn-outline-primary" onclick="exportToExcel()">💾 Excel</button>
-                <button class="btn btn-outline-danger" onclick="exportToPDF()">💾 PDF</button>
-            </div>
+            <button class="btn btn-success" onclick="addNewMonth()">
+                <i class="fas fa-plus me-1"></i> Bulan Baru
+            </button>
+            <button class="btn btn-info" onclick="generateClosingStatement()">
+                <i class="fas fa-file-invoice me-1"></i> Closing Statement
+            </button>
         </div>
         
         <!-- Summary Cards -->
         <div class="row">
             <div class="col-md-3">
                 <div class="card summary-card income">
-                    <h5>Total Pemasukan</h5>
+                    <h5><i class="fas fa-money-bill-wave me-2"></i> Total Pemasukan</h5>
                     <div class="value rupiah" id="total-income">Rp 0</div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card summary-card expense">
-                    <h5>Total Pengeluaran</h5>
+                    <h5><i class="fas fa-money-bill me-2"></i> Total Pengeluaran</h5>
                     <div class="value rupiah" id="total-expense">Rp 0</div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card summary-card profit">
-                    <h5>Total Keuntungan</h5>
+                    <h5><i class="fas fa-chart-line me-2"></i> Total Keuntungan</h5>
                     <div class="value rupiah" id="total-profit">Rp 0</div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card summary-card stock">
-                    <h5>Total Stok Voucher</h5>
+                    <h5><i class="fas fa-boxes me-2"></i> Total Stok Voucher</h5>
                     <div class="value" id="total-stock">0 item</div>
                 </div>
             </div>
@@ -361,7 +518,7 @@
                 <!-- Input Transaksi -->
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>Input Transaksi</span>
+                        <span><i class="fas fa-receipt me-2"></i> Input Transaksi</span>
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="transaction-type" checked>
                             <label class="form-check-label" for="transaction-type">Penjualan</label>
@@ -370,7 +527,7 @@
                     <div class="card-body">
                         <form id="transaction-form">
                             <div class="mb-3">
-                                <label class="form-label">Jenis Voucher</label>
+                                <label class="form-label"><i class="fas fa-tag me-2"></i> Jenis Voucher</label>
                                 <select class="form-select" id="voucher-type" required>
                                     <option value="">Pilih jenis voucher</option>
                                     <option value="Pulsa">Pulsa</option>
@@ -383,45 +540,47 @@
                             </div>
                             
                             <div class="mb-3">
-                                <label class="form-label">Nominal/Produk</label>
+                                <label class="form-label"><i class="fas fa-file-invoice me-2"></i> Nominal/Produk</label>
                                 <input type="text" class="form-control" id="voucher-name" placeholder="Contoh: 50.000, 10GB, FreeFire" required>
                             </div>
                             
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">Harga Modal (Rp)</label>
+                                    <label class="form-label"><i class="fas fa-money-bill me-2"></i> Harga Modal (Rp)</label>
                                     <input type="number" class="form-control" id="cost-price" placeholder="Harga beli" min="0" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">Harga Jual (Rp)</label>
+                                    <label class="form-label"><i class="fas fa-tag me-2"></i> Harga Jual (Rp)</label>
                                     <input type="number" class="form-control" id="sell-price" placeholder="Harga jual" min="0" required>
                                 </div>
                             </div>
                             
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">Jumlah</label>
+                                    <label class="form-label"><i class="fas fa-cubes me-2"></i> Jumlah</label>
                                     <input type="number" class="form-control" id="quantity" min="1" value="1" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">Tanggal</label>
+                                    <label class="form-label"><i class="fas fa-calendar-day me-2"></i> Tanggal</label>
                                     <input type="date" class="form-control" id="transaction-date" required>
                                 </div>
                             </div>
                             
                             <div class="mb-3">
-                                <label class="form-label">Keterangan (Opsional)</label>
+                                <label class="form-label"><i class="fas fa-sticky-note me-2"></i> Keterangan (Opsional)</label>
                                 <textarea class="form-control" id="description" rows="2" placeholder="Catatan tambahan..."></textarea>
                             </div>
                             
-                            <button type="submit" class="btn btn-primary w-100">Simpan Transaksi</button>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-save me-2"></i> Simpan Transaksi
+                            </button>
                         </form>
                     </div>
                 </div>
                 
                 <!-- Grafik Keuangan -->
                 <div class="card">
-                    <div class="card-header">Grafik Keuangan Bulanan</div>
+                    <div class="card-header"><i class="fas fa-chart-pie me-2"></i> Grafik Keuangan Bulanan</div>
                     <div class="card-body">
                         <div class="chart-container">
                             <canvas id="finance-chart"></canvas>
@@ -435,7 +594,7 @@
                 <!-- Riwayat Transaksi -->
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span>Riwayat Transaksi</span>
+                        <span><i class="fas fa-history me-2"></i> Riwayat Transaksi</span>
                         <div>
                             <select class="form-select form-select-sm" id="filter-type">
                                 <option value="all">Semua</option>
@@ -467,7 +626,7 @@
                 
                 <!-- Stok Voucher -->
                 <div class="card">
-                    <div class="card-header">Stok Voucher</div>
+                    <div class="card-header"><i class="fas fa-box-open me-2"></i> Stok Voucher</div>
                     <div class="card-body">
                         <div class="table-responsive">
                             <table class="table table-hover">
@@ -498,7 +657,7 @@
                 <div class="col-md-4">
                     <div class="card">
                         <div class="card-body">
-                            <h5>Ringkasan Keuangan</h5>
+                            <h5><i class="fas fa-chart-bar me-2"></i> Ringkasan Keuangan</h5>
                             <p><strong>Pemasukan:</strong> <span id="cs-income" class="rupiah"></span></p>
                             <p><strong>Pengeluaran:</strong> <span id="cs-expense" class="rupiah"></span></p>
                             <p><strong>Keuntungan:</strong> <span id="cs-profit" class="rupiah"></span></p>
@@ -509,7 +668,7 @@
                 <div class="col-md-4">
                     <div class="card">
                         <div class="card-body">
-                            <h5>Stok Akhir Bulan</h5>
+                            <h5><i class="fas fa-boxes me-2"></i> Stok Akhir Bulan</h5>
                             <p><strong>Total Stok:</strong> <span id="cs-total-stock"></span> item</p>
                             <p><strong>Nilai Stok:</strong> <span id="cs-stock-value" class="rupiah"></span></p>
                             <p><strong>Produk Terlaris:</strong> <span id="cs-best-seller"></span></p>
@@ -519,9 +678,11 @@
                 <div class="col-md-4">
                     <div class="card">
                         <div class="card-body">
-                            <h5>Catatan</h5>
+                            <h5><i class="fas fa-info-circle me-2"></i> Catatan</h5>
                             <p>Stok akhir bulan tidak dibawa ke bulan berikutnya. Pembukuan bulan baru dimulai dengan stok kosong.</p>
-                            <button class="btn btn-primary mt-2" onclick="closeCurrentMonth()">Tutup Bulan Ini</button>
+                            <button class="btn btn-primary mt-2" onclick="closeCurrentMonth()">
+                                <i class="fas fa-door-closed me-2"></i> Tutup Bulan Ini
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -531,7 +692,7 @@
     
     <div class="footer">
         <div class="container">
-            <p class="mb-0">© 2025 Pembukuan Konter Pulsa UMKM | Sistem Pembukuan Per Bulan</p>
+            <p class="mb-0">© 2023 Pembukuan Konter Pulsa UMKM | Sistem Pembukuan Per Bulan</p>
         </div>
     </div>
     
@@ -543,6 +704,9 @@
             currentMonth: "",
             months: {}
         };
+        
+        // Variabel untuk menyimpan data yang akan diimport
+        let importFileData = null;
         
         // Inisialisasi data
         function initAppData() {
@@ -615,23 +779,27 @@
             return `${monthNames[parseInt(month) - 1]} ${year}`;
         }
         
-        // Tampilkan notifikasi ekspor
-        function showExportNotification(type) {
+        // Tampilkan notifikasi
+        function showNotification(type, message) {
             const notification = document.getElementById('export-notification');
             const overlay = document.getElementById('notification-overlay');
             const icon = document.getElementById('notification-icon');
             const title = document.getElementById('notification-title');
-            const message = document.getElementById('notification-message');
+            const msg = document.getElementById('notification-message');
             
-            // Set konten notifikasi berdasarkan jenis file
-            if (type === 'excel') {
+            // Set konten notifikasi berdasarkan jenis
+            if (type === 'export') {
                 icon.textContent = '📊';
-                title.textContent = 'File Excel Tersedia!';
-                message.textContent = 'Data pembukuan berhasil diunduh dalam format Excel.';
+                title.textContent = 'Backup Berhasil!';
+                msg.textContent = message || 'Data berhasil diekspor ke file.';
+            } else if (type === 'import') {
+                icon.textContent = '📥';
+                title.textContent = 'Restore Berhasil!';
+                msg.textContent = message || 'Data berhasil diimpor dari file.';
             } else {
-                icon.textContent = '📄';
-                title.textContent = 'File PDF Siap!';
-                message.textContent = 'Laporan pembukuan berhasil diunduh dalam format PDF.';
+                icon.textContent = '✅';
+                title.textContent = 'Sukses!';
+                msg.textContent = message || 'Operasi berhasil dilakukan.';
             }
             
             // Tampilkan notifikasi dan overlay
@@ -648,12 +816,31 @@
             document.getElementById('notification-overlay').style.display = 'none';
         }
         
+        // Tampilkan modal import
+        function showImportModal() {
+            document.getElementById('import-modal').style.display = 'block';
+            document.getElementById('notification-overlay').style.display = 'block';
+        }
+        
+        // Tutup modal import
+        function closeImportModal() {
+            document.getElementById('import-modal').style.display = 'none';
+            document.getElementById('notification-overlay').style.display = 'none';
+        }
+        
+        // Batal import
+        function cancelImport() {
+            closeImportModal();
+            importFileData = null;
+        }
+        
         // =====================
         // DATA OPERATIONS
         // =====================
         // Simpan data ke localStorage
         function saveData() {
             localStorage.setItem('pembukuan_data', JSON.stringify(appData));
+            showNotification('success', 'Data berhasil disimpan di browser!');
         }
         
         // Reset data
@@ -662,13 +849,13 @@
                 localStorage.removeItem('pembukuan_data');
                 initAppData();
                 updateUI();
-                alert('Data berhasil direset!');
+                showNotification('success', 'Data berhasil direset ke keadaan awal!');
             }
         }
         
         // Tambah bulan baru
         function addNewMonth() {
-            const newMonth = prompt("Masukkan bulan dan tahun baru (Format: YYYY-MM, contoh: 2025-07):");
+            const newMonth = prompt("Masukkan bulan dan tahun baru (Format: YYYY-MM, contoh: 2023-07):");
             if (newMonth && /^\d{4}-\d{2}$/.test(newMonth)) {
                 if (!appData.months[newMonth]) {
                     appData.months[newMonth] = {
@@ -679,12 +866,12 @@
                     saveData();
                     updateMonthSelector();
                     updateUI();
-                    alert(`Bulan ${formatMonthName(newMonth)} berhasil ditambahkan!`);
+                    showNotification('success', `Bulan ${formatMonthName(newMonth)} berhasil ditambahkan!`);
                 } else {
                     alert("Bulan tersebut sudah ada dalam pembukuan.");
                 }
             } else {
-                alert("Format bulan tidak valid. Gunakan format YYYY-MM (contoh: 2025-07)");
+                alert("Format bulan tidak valid. Gunakan format YYYY-MM (contoh: 2023-07)");
             }
         }
         
@@ -749,6 +936,218 @@
                 totalStock,
                 stockValue
             };
+        }
+        
+        // =====================
+        // EXPORT/IMPORT FUNCTIONS
+        // =====================
+        // Export data ke JSON
+        function exportToJSON() {
+            const dataStr = JSON.stringify(appData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportName = `Pembukuan_Konter_Pulsa_Backup_${new Date().toISOString().slice(0,10)}.json`;
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportName);
+            linkElement.click();
+            
+            showNotification('export', 'Backup data berhasil didownload!');
+        }
+        
+        // Import data dari file
+        function importData() {
+            document.getElementById('file-input').click();
+        }
+        
+        // Handle file input change
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.currentMonth && data.months) {
+                        importFileData = data;
+                        showImportModal();
+                    } else {
+                        throw new Error('Format file tidak valid');
+                    }
+                } catch (error) {
+                    alert('Gagal membaca file. Pastikan file backup valid.');
+                    console.error('Import error:', error);
+                }
+            };
+            reader.readAsText(file);
+            
+            // Reset input file
+            e.target.value = '';
+        });
+        
+        // Konfirmasi import data
+        function confirmImport() {
+            if (importFileData) {
+                appData = importFileData;
+                saveData();
+                updateMonthSelector();
+                updateUI();
+                closeImportModal();
+                showNotification('import', 'Data berhasil diimpor dari backup!');
+            }
+            importFileData = null;
+        }
+        
+        // Export ke Excel
+        function exportToExcel() {
+            const currentData = appData.months[appData.currentMonth];
+            const totals = calculateTotals();
+            
+            // Siapkan data transaksi
+            const transactionData = [
+                ['Tanggal', 'Jenis', 'Jenis Voucher', 'Produk', 'Jumlah', 'Harga Modal', 'Harga Jual', 'Keuntungan', 'Keterangan']
+            ];
+            
+            currentData.transactions.forEach(t => {
+                const profit = (t.sellPrice - t.costPrice) * t.quantity;
+                transactionData.push([
+                    formatDate(t.date),
+                    t.type === 'income' ? 'Penjualan' : 'Pembelian',
+                    t.voucherType,
+                    t.voucherName,
+                    t.quantity,
+                    t.costPrice,
+                    t.sellPrice,
+                    profit,
+                    t.description || ''
+                ]);
+            });
+            
+            // Siapkan data stok
+            const stockData = [
+                ['Jenis Voucher', 'Produk', 'Stok', 'Harga Modal', 'Harga Jual', 'Keuntungan per Unit']
+            ];
+            
+            for (const key in currentData.stock) {
+                const item = currentData.stock[key];
+                const profitPerUnit = item.sellPrice - item.costPrice;
+                stockData.push([
+                    item.type,
+                    item.name,
+                    item.stock,
+                    item.costPrice,
+                    item.sellPrice,
+                    profitPerUnit
+                ]);
+            }
+            
+            // Siapkan data ringkasan
+            const summaryData = [
+                ['Ringkasan Bulanan', ''],
+                ['Bulan', formatMonthName(appData.currentMonth)],
+                ['Total Pemasukan', totals.totalIncome],
+                ['Total Pengeluaran', totals.totalExpense],
+                ['Total Keuntungan', totals.totalProfit],
+                ['Total Stok', totals.totalStock],
+                ['Nilai Stok', totals.stockValue]
+            ];
+            
+            // Buat workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Tambahkan sheet
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'Ringkasan');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(transactionData), 'Transaksi');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(stockData), 'Stok');
+            
+            // Export ke file
+            const monthName = formatMonthName(appData.currentMonth).replace(' ', '_');
+            XLSX.writeFile(wb, `Pembukuan_Konter_Pulsa_${monthName}.xlsx`);
+            
+            showNotification('export', 'Data Excel berhasil didownload!');
+        }
+        
+        // Export ke PDF
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const monthName = formatMonthName(appData.currentMonth);
+            const totals = calculateTotals();
+            
+            // Judul
+            doc.setFontSize(18);
+            doc.text(`Pembukuan Konter Pulsa - ${monthName}`, 105, 15, null, null, 'center');
+            
+            // Ringkasan
+            doc.setFontSize(12);
+            doc.text(`Total Pemasukan: ${formatRupiah(totals.totalIncome)}`, 20, 30);
+            doc.text(`Total Pengeluaran: ${formatRupiah(totals.totalExpense)}`, 20, 40);
+            doc.text(`Total Keuntungan: ${formatRupiah(totals.totalProfit)}`, 20, 50);
+            doc.text(`Total Stok: ${totals.totalStock} item`, 20, 60);
+            doc.text(`Nilai Stok: ${formatRupiah(totals.stockValue)}`, 20, 70);
+            
+            // Transaksi
+            doc.addPage();
+            doc.setFontSize(16);
+            doc.text('Daftar Transaksi', 105, 15, null, null, 'center');
+            
+            const transactionData = [
+                ['Tanggal', 'Jenis', 'Produk', 'Jumlah', 'Keuntungan']
+            ];
+            
+            appData.months[appData.currentMonth].transactions.forEach(t => {
+                const profit = (t.sellPrice - t.costPrice) * t.quantity;
+                transactionData.push([
+                    formatDate(t.date),
+                    t.type === 'income' ? 'Penjualan' : 'Pembelian',
+                    `${t.voucherType} ${t.voucherName}`,
+                    t.quantity,
+                    formatRupiah(profit)
+                ]);
+            });
+            
+            doc.autoTable({
+                head: transactionData.slice(0, 1),
+                body: transactionData.slice(1),
+                startY: 25,
+                theme: 'grid',
+                headStyles: { fillColor: [67, 97, 238] }
+            });
+            
+            // Stok
+            doc.addPage();
+            doc.setFontSize(16);
+            doc.text('Daftar Stok', 105, 15, null, null, 'center');
+            
+            const stockData = [
+                ['Jenis', 'Produk', 'Stok', 'Harga Modal', 'Harga Jual']
+            ];
+            
+            for (const key in appData.months[appData.currentMonth].stock) {
+                const item = appData.months[appData.currentMonth].stock[key];
+                stockData.push([
+                    item.type,
+                    item.name,
+                    item.stock,
+                    formatRupiah(item.costPrice),
+                    formatRupiah(item.sellPrice)
+                ]);
+            }
+            
+            doc.autoTable({
+                head: stockData.slice(0, 1),
+                body: stockData.slice(1),
+                startY: 25,
+                theme: 'grid',
+                headStyles: { fillColor: [67, 97, 238] }
+            });
+            
+            // Simpan PDF
+            doc.save(`Pembukuan_Konter_Pulsa_${monthName.replace(' ', '_')}.pdf`);
+            
+            showNotification('export', 'Data PDF berhasil didownload!');
         }
         
         // =====================
@@ -1083,163 +1482,8 @@
                 // Sembunyikan closing statement
                 document.getElementById('closing-statement-container').style.display = 'none';
                 
-                alert(`Pembukuan bulan ${formatMonthName(appData.currentMonth)} telah dimulai!`);
+                showNotification('success', `Pembukuan bulan ${formatMonthName(appData.currentMonth)} telah dimulai!`);
             }
-        }
-        
-        // =====================
-        // EXPORT FUNCTIONS
-        // =====================
-        // Export ke Excel
-        function exportToExcel() {
-            const currentData = appData.months[appData.currentMonth];
-            const totals = calculateTotals();
-            
-            // Siapkan data transaksi
-            const transactionData = [
-                ['Tanggal', 'Jenis', 'Jenis Voucher', 'Produk', 'Jumlah', 'Harga Modal', 'Harga Jual', 'Keuntungan', 'Keterangan']
-            ];
-            
-            currentData.transactions.forEach(t => {
-                const profit = (t.sellPrice - t.costPrice) * t.quantity;
-                transactionData.push([
-                    formatDate(t.date),
-                    t.type === 'income' ? 'Penjualan' : 'Pembelian',
-                    t.voucherType,
-                    t.voucherName,
-                    t.quantity,
-                    t.costPrice,
-                    t.sellPrice,
-                    profit,
-                    t.description || ''
-                ]);
-            });
-            
-            // Siapkan data stok
-            const stockData = [
-                ['Jenis Voucher', 'Produk', 'Stok', 'Harga Modal', 'Harga Jual', 'Keuntungan per Unit']
-            ];
-            
-            for (const key in currentData.stock) {
-                const item = currentData.stock[key];
-                const profitPerUnit = item.sellPrice - item.costPrice;
-                stockData.push([
-                    item.type,
-                    item.name,
-                    item.stock,
-                    item.costPrice,
-                    item.sellPrice,
-                    profitPerUnit
-                ]);
-            }
-            
-            // Siapkan data ringkasan
-            const summaryData = [
-                ['Ringkasan Bulanan', ''],
-                ['Bulan', formatMonthName(appData.currentMonth)],
-                ['Total Pemasukan', totals.totalIncome],
-                ['Total Pengeluaran', totals.totalExpense],
-                ['Total Keuntungan', totals.totalProfit],
-                ['Total Stok', totals.totalStock],
-                ['Nilai Stok', totals.stockValue]
-            ];
-            
-            // Buat workbook
-            const wb = XLSX.utils.book_new();
-            
-            // Tambahkan sheet
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'Ringkasan');
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(transactionData), 'Transaksi');
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(stockData), 'Stok');
-            
-            // Export ke file
-            const monthName = formatMonthName(appData.currentMonth).replace(' ', '_');
-            XLSX.writeFile(wb, `Pembukuan_Konter_Pulsa_${monthName}.xlsx`);
-            
-            // Tampilkan notifikasi
-            showExportNotification('excel');
-        }
-        
-        // Export ke PDF
-        function exportToPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            const monthName = formatMonthName(appData.currentMonth);
-            const totals = calculateTotals();
-            
-            // Judul
-            doc.setFontSize(18);
-            doc.text(`Pembukuan Konter Pulsa - ${monthName}`, 105, 15, null, null, 'center');
-            
-            // Ringkasan
-            doc.setFontSize(12);
-            doc.text(`Total Pemasukan: ${formatRupiah(totals.totalIncome)}`, 20, 30);
-            doc.text(`Total Pengeluaran: ${formatRupiah(totals.totalExpense)}`, 20, 40);
-            doc.text(`Total Keuntungan: ${formatRupiah(totals.totalProfit)}`, 20, 50);
-            doc.text(`Total Stok: ${totals.totalStock} item`, 20, 60);
-            doc.text(`Nilai Stok: ${formatRupiah(totals.stockValue)}`, 20, 70);
-            
-            // Transaksi
-            doc.addPage();
-            doc.setFontSize(16);
-            doc.text('Daftar Transaksi', 105, 15, null, null, 'center');
-            
-            const transactionData = [
-                ['Tanggal', 'Jenis', 'Produk', 'Jumlah', 'Keuntungan']
-            ];
-            
-            appData.months[appData.currentMonth].transactions.forEach(t => {
-                const profit = (t.sellPrice - t.costPrice) * t.quantity;
-                transactionData.push([
-                    formatDate(t.date),
-                    t.type === 'income' ? 'Penjualan' : 'Pembelian',
-                    `${t.voucherType} ${t.voucherName}`,
-                    t.quantity,
-                    formatRupiah(profit)
-                ]);
-            });
-            
-            doc.autoTable({
-                head: transactionData.slice(0, 1),
-                body: transactionData.slice(1),
-                startY: 25,
-                theme: 'grid',
-                headStyles: { fillColor: [67, 97, 238] }
-            });
-            
-            // Stok
-            doc.addPage();
-            doc.setFontSize(16);
-            doc.text('Daftar Stok', 105, 15, null, null, 'center');
-            
-            const stockData = [
-                ['Jenis', 'Produk', 'Stok', 'Harga Modal', 'Harga Jual']
-            ];
-            
-            for (const key in appData.months[appData.currentMonth].stock) {
-                const item = appData.months[appData.currentMonth].stock[key];
-                stockData.push([
-                    item.type,
-                    item.name,
-                    item.stock,
-                    formatRupiah(item.costPrice),
-                    formatRupiah(item.sellPrice)
-                ]);
-            }
-            
-            doc.autoTable({
-                head: stockData.slice(0, 1),
-                body: stockData.slice(1),
-                startY: 25,
-                theme: 'grid',
-                headStyles: { fillColor: [67, 97, 238] }
-            });
-            
-            // Simpan PDF
-            doc.save(`Pembukuan_Konter_Pulsa_${monthName.replace(' ', '_')}.pdf`);
-            
-            // Tampilkan notifikasi
-            showExportNotification('pdf');
         }
         
         // =====================
