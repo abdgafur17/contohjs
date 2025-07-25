@@ -207,9 +207,96 @@
         .status-profit { background-color: rgba(76, 201, 240, 0.2); color: #4cc9f0; }
         .status-normal { background-color: rgba(255, 158, 0, 0.2); color: #ff9e00; }
         .status-loss { background-color: rgba(247, 37, 133, 0.2); color: #f72585; }
+        
+        /* Notifikasi Ekspor */
+        .export-notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px 50px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            z-index: 1000;
+            text-align: center;
+            display: none;
+            animation: popIn 0.5s ease-out;
+            border: 3px solid #4ade80;
+            max-width: 90%;
+            width: 400px;
+        }
+        
+        @keyframes popIn {
+            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+            70% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        
+        .notification-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            animation: bounce 1s infinite alternate;
+        }
+        
+        @keyframes bounce {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-15px); }
+        }
+        
+        .notification-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .notification-message {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 25px;
+        }
+        
+        .notification-button {
+            background: #4361ee;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 50px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .notification-button:hover {
+            background: #3f37c9;
+            transform: scale(1.05);
+        }
+        
+        .notification-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 999;
+            display: none;
+        }
     </style>
 </head>
 <body>
+    <!-- Overlay untuk notifikasi -->
+    <div class="notification-overlay" id="notification-overlay"></div>
+    
+    <!-- Notifikasi Ekspor -->
+    <div class="export-notification" id="export-notification">
+        <div class="notification-icon" id="notification-icon">📊</div>
+        <div class="notification-title" id="notification-title">Sukses!</div>
+        <div class="notification-message" id="notification-message">File Anda berhasil didownload</div>
+        <button class="notification-button" onclick="closeNotification()">Mengerti</button>
+    </div>
+    
     <!-- Header -->
     <div class="header">
         <div class="container">
@@ -526,6 +613,39 @@
                 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
             ];
             return `${monthNames[parseInt(month) - 1]} ${year}`;
+        }
+        
+        // Tampilkan notifikasi ekspor
+        function showExportNotification(type) {
+            const notification = document.getElementById('export-notification');
+            const overlay = document.getElementById('notification-overlay');
+            const icon = document.getElementById('notification-icon');
+            const title = document.getElementById('notification-title');
+            const message = document.getElementById('notification-message');
+            
+            // Set konten notifikasi berdasarkan jenis file
+            if (type === 'excel') {
+                icon.textContent = '📊';
+                title.textContent = 'File Excel Tersedia!';
+                message.textContent = 'Data pembukuan berhasil diunduh dalam format Excel.';
+            } else {
+                icon.textContent = '📄';
+                title.textContent = 'File PDF Siap!';
+                message.textContent = 'Laporan pembukuan berhasil diunduh dalam format PDF.';
+            }
+            
+            // Tampilkan notifikasi dan overlay
+            notification.style.display = 'block';
+            overlay.style.display = 'block';
+            
+            // Otomatis tutup setelah 5 detik
+            setTimeout(closeNotification, 5000);
+        }
+        
+        // Tutup notifikasi
+        function closeNotification() {
+            document.getElementById('export-notification').style.display = 'none';
+            document.getElementById('notification-overlay').style.display = 'none';
         }
         
         // =====================
@@ -972,7 +1092,6 @@
         // =====================
         // Export ke Excel
         function exportToExcel() {
-            console.log("test");
             const currentData = appData.months[appData.currentMonth];
             const totals = calculateTotals();
             
@@ -1036,6 +1155,9 @@
             // Export ke file
             const monthName = formatMonthName(appData.currentMonth).replace(' ', '_');
             XLSX.writeFile(wb, `Pembukuan_Konter_Pulsa_${monthName}.xlsx`);
+            
+            // Tampilkan notifikasi
+            showExportNotification('excel');
         }
         
         // Export ke PDF
@@ -1115,6 +1237,9 @@
             
             // Simpan PDF
             doc.save(`Pembukuan_Konter_Pulsa_${monthName.replace(' ', '_')}.pdf`);
+            
+            // Tampilkan notifikasi
+            showExportNotification('pdf');
         }
         
         // =====================
