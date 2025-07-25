@@ -668,7 +668,7 @@
         
         // Tambah bulan baru
         function addNewMonth() {
-            const newMonth = prompt("Masukkan bulan dan tahun baru (Format: YYYY-MM, contoh: 2023-07):");
+            const newMonth = prompt("Masukkan bulan dan tahun baru (Format: YYYY-MM, contoh: 2025-07):");
             if (newMonth && /^\d{4}-\d{2}$/.test(newMonth)) {
                 if (!appData.months[newMonth]) {
                     appData.months[newMonth] = {
