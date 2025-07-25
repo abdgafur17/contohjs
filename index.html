@@ -1,15 +1,635 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pembukuan Konter Pulsa - UMKM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --warning: #ff9e00;
+            --light: #f8f9fa;
+            --dark: #212529;
+        }
+        
+        body {
+            background-color: #f5f7fb;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-radius: 0 0 20px 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border: none;
+            margin-bottom: 25px;
+            transition: transform 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            background-color: white;
+            border-bottom: 2px solid rgba(67, 97, 238, 0.1);
+            font-weight: 600;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 15px 20px;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--secondary);
+        }
+        
+        .btn-danger {
+            background-color: var(--danger);
+            border: none;
+            border-radius: 8px;
+            padding: 5px 12px;
+        }
+        
+        .summary-card {
+            text-align: center;
+            padding: 15px;
+        }
+        
+        .summary-card h5 {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .summary-card .value {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+        
+        .summary-card.income { border-top: 4px solid #4cc9f0; }
+        .summary-card.expense { border-top: 4px solid #f72585; }
+        .summary-card.profit { border-top: 4px solid #4ade80; }
+        .summary-card.stock { border-top: 4px solid #ff9e00; }
+        
+        .form-control, .form-select {
+            border-radius: 8px;
+            padding: 10px 15px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
+        }
+        
+        table {
+            width: 100%;
+        }
+        
+        th {
+            background-color: rgba(67, 97, 238, 0.05);
+            font-weight: 600;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        .rupiah {
+            font-weight: 600;
+            color: #4361ee;
+        }
+        
+        .negative {
+            color: var(--danger);
+        }
+        
+        .positive {
+            color: #4ade80;
+        }
+        
+        .footer {
+            background-color: var(--light);
+            padding: 20px 0;
+            text-align: center;
+            margin-top: 30px;
+            border-radius: 20px 20px 0 0;
+            color: #666;
+        }
+        
+        .action-cell {
+            width: 100px;
+        }
+        
+        .btn-sm {
+            padding: 3px 8px;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
 <body>
-  <h1 id="judul">Halo Dunia!</h1>
-  <button onclick="ubahJudul()">Ubah Judul</button>
-
-  <script>
-    function ubahJudul() {
-      // Manipulasi DOM dengan JS
-      document.getElementById("judul").textContent = "JS di HTML!";
-      document.body.style.backgroundColor = "#f0f0f0";
-    }
-  </script>
+    <!-- Header -->
+    <div class="header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="mb-0">📱 Pembukuan Konter Pulsa</h1>
+                <div class="d-flex">
+                    <button class="btn btn-light me-2" onclick="saveData()">💾 Simpan Data</button>
+                    <button class="btn btn-warning" onclick="resetData()">🔄 Reset Data</button>
+                </div>
+            </div>
+            <p class="mb-0 mt-2">Kelola keuangan dan stok voucher UMKM Anda dengan mudah</p>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- Summary Cards -->
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card summary-card income">
+                    <h5>Total Pemasukan</h5>
+                    <div class="value rupiah" id="total-income">Rp 0</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card summary-card expense">
+                    <h5>Total Pengeluaran</h5>
+                    <div class="value rupiah" id="total-expense">Rp 0</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card summary-card profit">
+                    <h5>Total Keuntungan</h5>
+                    <div class="value rupiah" id="total-profit">Rp 0</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card summary-card stock">
+                    <h5>Total Stok Voucher</h5>
+                    <div class="value" id="total-stock">0 item</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Left Column -->
+            <div class="col-lg-6">
+                <!-- Input Transaksi -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Input Transaksi</span>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="transaction-type" checked>
+                            <label class="form-check-label" for="transaction-type">Penjualan</label>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <form id="transaction-form">
+                            <div class="mb-3">
+                                <label class="form-label">Jenis Voucher</label>
+                                <select class="form-select" id="voucher-type" required>
+                                    <option value="">Pilih jenis voucher</option>
+                                    <option value="Pulsa">Pulsa</option>
+                                    <option value="Paket Data">Paket Data</option>
+                                    <option value="Token Listrik">Token Listrik</option>
+                                    <option value="Voucher Game">Voucher Game</option>
+                                    <option value="E-Money">E-Money</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Nominal/Produk</label>
+                                <input type="text" class="form-control" id="voucher-name" placeholder="Contoh: 50.000, 10GB, FreeFire" required>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Harga Modal (Rp)</label>
+                                    <input type="number" class="form-control" id="cost-price" placeholder="Harga beli" min="0" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Harga Jual (Rp)</label>
+                                    <input type="number" class="form-control" id="sell-price" placeholder="Harga jual" min="0" required>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Jumlah</label>
+                                    <input type="number" class="form-control" id="quantity" min="1" value="1" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Tanggal</label>
+                                    <input type="date" class="form-control" id="transaction-date" required>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Keterangan (Opsional)</label>
+                                <textarea class="form-control" id="description" rows="2" placeholder="Catatan tambahan..."></textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary w-100">Simpan Transaksi</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Grafik Keuangan -->
+                <div class="card">
+                    <div class="card-header">Grafik Keuangan</div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="finance-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Column -->
+            <div class="col-lg-6">
+                <!-- Riwayat Transaksi -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Riwayat Transaksi</span>
+                        <div>
+                            <select class="form-select form-select-sm" id="filter-type">
+                                <option value="all">Semua</option>
+                                <option value="income">Pemasukan</option>
+                                <option value="expense">Pengeluaran</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Tanggal</th>
+                                        <th>Jenis</th>
+                                        <th>Produk</th>
+                                        <th>Jumlah</th>
+                                        <th>Keuntungan</th>
+                                        <th class="action-cell">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transaction-history">
+                                    <!-- Data transaksi akan dimasukkan di sini melalui JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Stok Voucher -->
+                <div class="card">
+                    <div class="card-header">Stok Voucher</div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Jenis</th>
+                                        <th>Produk</th>
+                                        <th>Stok</th>
+                                        <th>Harga Modal</th>
+                                        <th>Harga Jual</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="stock-list">
+                                    <!-- Data stok akan dimasukkan di sini melalui JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <div class="container">
+            <p class="mb-0">© 2023 Pembukuan Konter Pulsa UMKM | Dibuat dengan ❤️ untuk pengusaha kecil</p>
+        </div>
+    </div>
+    
+    <script>
+        // Inisialisasi data
+        let transactions = JSON.parse(localStorage.getItem('pembukuan_transactions')) || [];
+        let stock = JSON.parse(localStorage.getItem('pembukuan_stock')) || {};
+        
+        // Format angka ke Rupiah
+        function formatRupiah(angka) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(angka);
+        }
+        
+        // Format tanggal
+        function formatDate(dateString) {
+            const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
+            return new Date(dateString).toLocaleDateString('id-ID', options);
+        }
+        
+        // Hitung total
+        function calculateTotals() {
+            let totalIncome = 0;
+            let totalExpense = 0;
+            let totalProfit = 0;
+            
+            transactions.forEach(transaction => {
+                if (transaction.type === 'income') {
+                    totalIncome += transaction.sellPrice * transaction.quantity;
+                    totalProfit += (transaction.sellPrice - transaction.costPrice) * transaction.quantity;
+                } else {
+                    totalExpense += transaction.costPrice * transaction.quantity;
+                }
+            });
+            
+            document.getElementById('total-income').textContent = formatRupiah(totalIncome);
+            document.getElementById('total-expense').textContent = formatRupiah(totalExpense);
+            document.getElementById('total-profit').textContent = formatRupiah(totalProfit);
+            
+            // Hitung total stok
+            let totalStock = 0;
+            for (const key in stock) {
+                totalStock += stock[key].stock;
+            }
+            document.getElementById('total-stock').textContent = `${totalStock} item`;
+            
+            return { totalIncome, totalExpense, totalProfit };
+        }
+        
+        // Update grafik
+        function updateChart() {
+            const totals = calculateTotals();
+            const ctx = document.getElementById('finance-chart').getContext('2d');
+            
+            if (window.financeChart) {
+                window.financeChart.destroy();
+            }
+            
+            window.financeChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pemasukan', 'Pengeluaran', 'Keuntungan'],
+                    datasets: [{
+                        data: [totals.totalIncome, totals.totalExpense, totals.totalProfit],
+                        backgroundColor: ['#4cc9f0', '#f72585', '#4ade80'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${formatRupiah(context.raw)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update riwayat transaksi
+        function updateTransactionHistory() {
+            const filterType = document.getElementById('filter-type').value;
+            const tbody = document.getElementById('transaction-history');
+            tbody.innerHTML = '';
+            
+            const filteredTransactions = filterType === 'all' 
+                ? transactions 
+                : transactions.filter(t => t.type === filterType);
+            
+            if (filteredTransactions.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center">Tidak ada transaksi</td></tr>`;
+                return;
+            }
+            
+            // Urutkan transaksi berdasarkan tanggal (terbaru pertama)
+            filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            filteredTransactions.forEach((transaction, index) => {
+                const profit = (transaction.sellPrice - transaction.costPrice) * transaction.quantity;
+                const profitClass = profit >= 0 ? 'positive' : 'negative';
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDate(transaction.date)}</td>
+                    <td><span class="badge ${transaction.type === 'income' ? 'bg-success' : 'bg-danger'}">${transaction.type === 'income' ? 'Penjualan' : 'Pembelian'}</span></td>
+                    <td>${transaction.voucherType} ${transaction.voucherName}</td>
+                    <td>${transaction.quantity}</td>
+                    <td class="${profitClass}">${formatRupiah(profit)}</td>
+                    <td class="action-cell">
+                        <button class="btn btn-sm btn-danger" onclick="deleteTransaction(${index})">Hapus</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Update daftar stok
+        function updateStockList() {
+            const tbody = document.getElementById('stock-list');
+            tbody.innerHTML = '';
+            
+            if (Object.keys(stock).length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center">Tidak ada stok</td></tr>`;
+                return;
+            }
+            
+            for (const key in stock) {
+                const item = stock[key];
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.type}</td>
+                    <td>${item.name}</td>
+                    <td>${item.stock}</td>
+                    <td>${formatRupiah(item.costPrice)}</td>
+                    <td>${formatRupiah(item.sellPrice)}</td>
+                `;
+                tbody.appendChild(row);
+            }
+        }
+        
+        // Hapus transaksi
+        function deleteTransaction(index) {
+            const transaction = transactions[index];
+            
+            // Kembalikan stok jika transaksi adalah penjualan
+            if (transaction.type === 'income') {
+                const stockKey = `${transaction.voucherType}_${transaction.voucherName}`;
+                if (stock[stockKey]) {
+                    stock[stockKey].stock += transaction.quantity;
+                }
+            } 
+            // Kurangi stok jika transaksi adalah pembelian
+            else {
+                const stockKey = `${transaction.voucherType}_${transaction.voucherName}`;
+                if (stock[stockKey]) {
+                    stock[stockKey].stock -= transaction.quantity;
+                    
+                    // Hapus item jika stok menjadi 0
+                    if (stock[stockKey].stock <= 0) {
+                        delete stock[stockKey];
+                    }
+                }
+            }
+            
+            // Hapus transaksi
+            transactions.splice(index, 1);
+            
+            // Perbarui UI
+            saveData();
+            updateUI();
+        }
+        
+        // Simpan data ke localStorage
+        function saveData() {
+            localStorage.setItem('pembukuan_transactions', JSON.stringify(transactions));
+            localStorage.setItem('pembukuan_stock', JSON.stringify(stock));
+            
+            // Tampilkan notifikasi
+            alert('Data berhasil disimpan!');
+        }
+        
+        // Reset data
+        function resetData() {
+            if (confirm('Apakah Anda yakin ingin mereset semua data? Data yang dihapus tidak dapat dikembalikan.')) {
+                transactions = [];
+                stock = {};
+                localStorage.removeItem('pembukuan_transactions');
+                localStorage.removeItem('pembukuan_stock');
+                updateUI();
+                alert('Data berhasil direset!');
+            }
+        }
+        
+        // Perbarui semua UI
+        function updateUI() {
+            calculateTotals();
+            updateChart();
+            updateTransactionHistory();
+            updateStockList();
+        }
+        
+        // Event listener untuk form
+        document.getElementById('transaction-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Ambil nilai dari form
+            const isIncome = document.getElementById('transaction-type').checked;
+            const voucherType = document.getElementById('voucher-type').value;
+            const voucherName = document.getElementById('voucher-name').value;
+            const costPrice = parseInt(document.getElementById('cost-price').value);
+            const sellPrice = parseInt(document.getElementById('sell-price').value);
+            const quantity = parseInt(document.getElementById('quantity').value);
+            const date = document.getElementById('transaction-date').value;
+            const description = document.getElementById('description').value;
+            
+            // Validasi input
+            if (!voucherType || !voucherName || isNaN(costPrice) || isNaN(sellPrice) || isNaN(quantity) || !date) {
+                alert('Harap isi semua field yang diperlukan!');
+                return;
+            }
+            
+            // Buat objek transaksi
+            const transaction = {
+                type: isIncome ? 'income' : 'expense',
+                voucherType,
+                voucherName,
+                costPrice,
+                sellPrice,
+                quantity,
+                date,
+                description,
+                timestamp: new Date().getTime()
+            };
+            
+            // Tambahkan transaksi ke array
+            transactions.push(transaction);
+            
+            // Kelola stok
+            const stockKey = `${voucherType}_${voucherName}`;
+            
+            if (!stock[stockKey]) {
+                // Buat item baru jika belum ada
+                stock[stockKey] = {
+                    type: voucherType,
+                    name: voucherName,
+                    costPrice,
+                    sellPrice,
+                    stock: 0
+                };
+            }
+            
+            // Perbarui stok
+            if (isIncome) {
+                // Penjualan - kurangi stok
+                stock[stockKey].stock -= quantity;
+            } else {
+                // Pembelian - tambah stok
+                stock[stockKey].stock += quantity;
+            }
+            
+            // Hapus item jika stok menjadi 0
+            if (stock[stockKey].stock <= 0) {
+                delete stock[stockKey];
+            }
+            
+            // Reset form
+            this.reset();
+            document.getElementById('quantity').value = 1;
+            document.getElementById('transaction-date').value = new Date().toISOString().split('T')[0];
+            
+            // Perbarui UI
+            updateUI();
+        });
+        
+        // Event listener untuk filter
+        document.getElementById('filter-type').addEventListener('change', updateTransactionHistory);
+        
+        // Set tanggal default ke hari ini
+        document.getElementById('transaction-date').value = new Date().toISOString().split('T')[0];
+        
+        // Inisialisasi UI
+        updateUI();
+    </script>
 </body>
 </html>
