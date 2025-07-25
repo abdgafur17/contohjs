@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pembukuan Konter Pulsa - UMKM</title>
+    <title>Pembukuan Konter Pulsa UMKM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
         :root {
             --primary: #4361ee;
@@ -15,12 +19,15 @@
             --warning: #ff9e00;
             --light: #f8f9fa;
             --dark: #212529;
+            --profit: #4ade80;
+            --loss: #ff6b6b;
         }
         
         body {
             background-color: #f5f7fb;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: #333;
+            padding-bottom: 50px;
         }
         
         .header {
@@ -89,7 +96,7 @@
         
         .summary-card.income { border-top: 4px solid #4cc9f0; }
         .summary-card.expense { border-top: 4px solid #f72585; }
-        .summary-card.profit { border-top: 4px solid #4ade80; }
+        .summary-card.profit { border-top: 4px solid var(--profit); }
         .summary-card.stock { border-top: 4px solid #ff9e00; }
         
         .form-control, .form-select {
@@ -128,7 +135,7 @@
         }
         
         .positive {
-            color: #4ade80;
+            color: var(--profit);
         }
         
         .footer {
@@ -138,6 +145,9 @@
             margin-top: 30px;
             border-radius: 20px 20px 0 0;
             color: #666;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
         }
         
         .action-cell {
@@ -148,6 +158,55 @@
             padding: 3px 8px;
             font-size: 0.85rem;
         }
+        
+        .month-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .closing-statement {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .closing-statement h3 {
+            margin-bottom: 20px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .emoji-status {
+            font-size: 1.5rem;
+            margin-left: 10px;
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .badge-status {
+            font-size: 0.9rem;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        
+        .status-profit { background-color: rgba(76, 201, 240, 0.2); color: #4cc9f0; }
+        .status-normal { background-color: rgba(255, 158, 0, 0.2); color: #ff9e00; }
+        .status-loss { background-color: rgba(247, 37, 133, 0.2); color: #f72585; }
     </style>
 </head>
 <body>
@@ -155,17 +214,32 @@
     <div class="header">
         <div class="container">
             <div class="d-flex justify-content-between align-items-center">
-                <h1 class="mb-0">📱 Pembukuan Konter Pulsa</h1>
+                <h1 class="mb-0">📱 Pembukuan Konter Pulsa UMKM</h1>
                 <div class="d-flex">
                     <button class="btn btn-light me-2" onclick="saveData()">💾 Simpan Data</button>
                     <button class="btn btn-warning" onclick="resetData()">🔄 Reset Data</button>
                 </div>
             </div>
-            <p class="mb-0 mt-2">Kelola keuangan dan stok voucher UMKM Anda dengan mudah</p>
+            <p class="mb-0 mt-2">Kelola keuangan dan stok voucher dengan pembukuan per bulan</p>
         </div>
     </div>
     
     <div class="container">
+        <!-- Pemilih Bulan -->
+        <div class="month-selector">
+            <h4 class="mb-0">Pembukuan Bulan:</h4>
+            <select class="form-select" id="month-select" style="width: 200px;">
+                <!-- Opsi bulan akan diisi oleh JavaScript -->
+            </select>
+            <button class="btn btn-success" onclick="addNewMonth()">📅 Buat Bulan Baru</button>
+            <button class="btn btn-info" onclick="generateClosingStatement()">📑 Closing Statement</button>
+            
+            <div class="export-buttons">
+                <button class="btn btn-outline-primary" onclick="exportToExcel()">💾 Excel</button>
+                <button class="btn btn-outline-danger" onclick="exportToPDF()">💾 PDF</button>
+            </div>
+        </div>
+        
         <!-- Summary Cards -->
         <div class="row">
             <div class="col-md-3">
@@ -217,6 +291,7 @@
                                     <option value="Token Listrik">Token Listrik</option>
                                     <option value="Voucher Game">Voucher Game</option>
                                     <option value="E-Money">E-Money</option>
+                                    <option value="Lainnya">Lainnya</option>
                                 </select>
                             </div>
                             
@@ -259,7 +334,7 @@
                 
                 <!-- Grafik Keuangan -->
                 <div class="card">
-                    <div class="card-header">Grafik Keuangan</div>
+                    <div class="card-header">Grafik Keuangan Bulanan</div>
                     <div class="card-body">
                         <div class="chart-container">
                             <canvas id="finance-chart"></canvas>
@@ -316,6 +391,7 @@
                                         <th>Stok</th>
                                         <th>Harga Modal</th>
                                         <th>Harga Jual</th>
+                                        <th>Keuntungan/Unit</th>
                                     </tr>
                                 </thead>
                                 <tbody id="stock-list">
@@ -327,18 +403,105 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Closing Statement -->
+        <div id="closing-statement-container" class="closing-statement" style="display: none;">
+            <h3>📑 Closing Statement <span id="closing-month"></span> <span id="status-emoji" class="emoji-status"></span></h3>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5>Ringkasan Keuangan</h5>
+                            <p><strong>Pemasukan:</strong> <span id="cs-income" class="rupiah"></span></p>
+                            <p><strong>Pengeluaran:</strong> <span id="cs-expense" class="rupiah"></span></p>
+                            <p><strong>Keuntungan:</strong> <span id="cs-profit" class="rupiah"></span></p>
+                            <p><strong>Status:</strong> <span id="cs-status" class="badge-status"></span></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5>Stok Akhir Bulan</h5>
+                            <p><strong>Total Stok:</strong> <span id="cs-total-stock"></span> item</p>
+                            <p><strong>Nilai Stok:</strong> <span id="cs-stock-value" class="rupiah"></span></p>
+                            <p><strong>Produk Terlaris:</strong> <span id="cs-best-seller"></span></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5>Catatan</h5>
+                            <p>Stok akhir bulan tidak dibawa ke bulan berikutnya. Pembukuan bulan baru dimulai dengan stok kosong.</p>
+                            <button class="btn btn-primary mt-2" onclick="closeCurrentMonth()">Tutup Bulan Ini</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <div class="footer">
         <div class="container">
-            <p class="mb-0">© 2023 Pembukuan Konter Pulsa UMKM | Dibuat dengan ❤️ untuk pengusaha kecil</p>
+            <p class="mb-0">© 2023 Pembukuan Konter Pulsa UMKM | Sistem Pembukuan Per Bulan</p>
         </div>
     </div>
     
     <script>
+        // =====================
+        // DATA STRUCTURE
+        // =====================
+        let appData = {
+            currentMonth: "",
+            months: {}
+        };
+        
         // Inisialisasi data
-        let transactions = JSON.parse(localStorage.getItem('pembukuan_transactions')) || [];
-        let stock = JSON.parse(localStorage.getItem('pembukuan_stock')) || {};
+        function initAppData() {
+            const savedData = localStorage.getItem('pembukuan_data');
+            if (savedData) {
+                appData = JSON.parse(savedData);
+                
+                // Jika tidak ada bulan yang aktif, buat bulan sekarang
+                if (!appData.currentMonth) {
+                    appData.currentMonth = getCurrentMonthYear();
+                }
+                
+                // Jika bulan sekarang belum ada, tambahkan
+                if (!appData.months[appData.currentMonth]) {
+                    appData.months[appData.currentMonth] = {
+                        transactions: [],
+                        stock: {}
+                    };
+                }
+            } else {
+                // Data baru
+                const currentMonth = getCurrentMonthYear();
+                appData = {
+                    currentMonth: currentMonth,
+                    months: {
+                        [currentMonth]: {
+                            transactions: [],
+                            stock: {}
+                        }
+                    }
+                };
+                saveData();
+            }
+            
+            // Perbarui dropdown bulan
+            updateMonthSelector();
+        }
+        
+        // =====================
+        // UTILITY FUNCTIONS
+        // =====================
+        // Dapatkan bulan dan tahun sekarang (format: YYYY-MM)
+        function getCurrentMonthYear() {
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
         
         // Format angka ke Rupiah
         function formatRupiah(angka) {
@@ -355,13 +518,89 @@
             return new Date(dateString).toLocaleDateString('id-ID', options);
         }
         
-        // Hitung total
+        // Format nama bulan
+        function formatMonthName(monthYear) {
+            const [year, month] = monthYear.split('-');
+            const monthNames = [
+                'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+            ];
+            return `${monthNames[parseInt(month) - 1]} ${year}`;
+        }
+        
+        // =====================
+        // DATA OPERATIONS
+        // =====================
+        // Simpan data ke localStorage
+        function saveData() {
+            localStorage.setItem('pembukuan_data', JSON.stringify(appData));
+        }
+        
+        // Reset data
+        function resetData() {
+            if (confirm('Apakah Anda yakin ingin mereset semua data? Data yang dihapus tidak dapat dikembalikan.')) {
+                localStorage.removeItem('pembukuan_data');
+                initAppData();
+                updateUI();
+                alert('Data berhasil direset!');
+            }
+        }
+        
+        // Tambah bulan baru
+        function addNewMonth() {
+            const newMonth = prompt("Masukkan bulan dan tahun baru (Format: YYYY-MM, contoh: 2023-07):");
+            if (newMonth && /^\d{4}-\d{2}$/.test(newMonth)) {
+                if (!appData.months[newMonth]) {
+                    appData.months[newMonth] = {
+                        transactions: [],
+                        stock: {}
+                    };
+                    appData.currentMonth = newMonth;
+                    saveData();
+                    updateMonthSelector();
+                    updateUI();
+                    alert(`Bulan ${formatMonthName(newMonth)} berhasil ditambahkan!`);
+                } else {
+                    alert("Bulan tersebut sudah ada dalam pembukuan.");
+                }
+            } else {
+                alert("Format bulan tidak valid. Gunakan format YYYY-MM (contoh: 2023-07)");
+            }
+        }
+        
+        // Perbarui dropdown bulan
+        function updateMonthSelector() {
+            const monthSelect = document.getElementById('month-select');
+            monthSelect.innerHTML = '';
+            
+            // Urutkan bulan dari yang terbaru
+            const sortedMonths = Object.keys(appData.months).sort().reverse();
+            
+            sortedMonths.forEach(month => {
+                const option = document.createElement('option');
+                option.value = month;
+                option.textContent = formatMonthName(month);
+                if (month === appData.currentMonth) {
+                    option.selected = true;
+                }
+                monthSelect.appendChild(option);
+            });
+            
+            // Tambahkan event listener
+            monthSelect.addEventListener('change', function() {
+                appData.currentMonth = this.value;
+                updateUI();
+            });
+        }
+        
+        // Hitung total untuk bulan aktif
         function calculateTotals() {
+            const currentData = appData.months[appData.currentMonth];
             let totalIncome = 0;
             let totalExpense = 0;
             let totalProfit = 0;
             
-            transactions.forEach(transaction => {
+            currentData.transactions.forEach(transaction => {
                 if (transaction.type === 'income') {
                     totalIncome += transaction.sellPrice * transaction.quantity;
                     totalProfit += (transaction.sellPrice - transaction.costPrice) * transaction.quantity;
@@ -376,12 +615,31 @@
             
             // Hitung total stok
             let totalStock = 0;
-            for (const key in stock) {
-                totalStock += stock[key].stock;
+            let stockValue = 0;
+            for (const key in currentData.stock) {
+                totalStock += currentData.stock[key].stock;
+                stockValue += currentData.stock[key].costPrice * currentData.stock[key].stock;
             }
             document.getElementById('total-stock').textContent = `${totalStock} item`;
             
-            return { totalIncome, totalExpense, totalProfit };
+            return { 
+                totalIncome, 
+                totalExpense, 
+                totalProfit,
+                totalStock,
+                stockValue
+            };
+        }
+        
+        // =====================
+        // UI UPDATES
+        // =====================
+        // Perbarui semua UI
+        function updateUI() {
+            const totals = calculateTotals();
+            updateChart();
+            updateTransactionHistory();
+            updateStockList();
         }
         
         // Update grafik
@@ -433,9 +691,10 @@
             const tbody = document.getElementById('transaction-history');
             tbody.innerHTML = '';
             
+            const currentTransactions = appData.months[appData.currentMonth].transactions;
             const filteredTransactions = filterType === 'all' 
-                ? transactions 
-                : transactions.filter(t => t.type === filterType);
+                ? currentTransactions 
+                : currentTransactions.filter(t => t.type === filterType);
             
             if (filteredTransactions.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="6" class="text-center">Tidak ada transaksi</td></tr>`;
@@ -469,13 +728,18 @@
             const tbody = document.getElementById('stock-list');
             tbody.innerHTML = '';
             
-            if (Object.keys(stock).length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center">Tidak ada stok</td></tr>`;
+            const currentStock = appData.months[appData.currentMonth].stock;
+            
+            if (Object.keys(currentStock).length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center">Tidak ada stok</td></tr>`;
                 return;
             }
             
-            for (const key in stock) {
-                const item = stock[key];
+            for (const key in currentStock) {
+                const item = currentStock[key];
+                const profitPerUnit = item.sellPrice - item.costPrice;
+                const profitClass = profitPerUnit >= 0 ? 'positive' : 'negative';
+                
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${item.type}</td>
@@ -483,73 +747,49 @@
                     <td>${item.stock}</td>
                     <td>${formatRupiah(item.costPrice)}</td>
                     <td>${formatRupiah(item.sellPrice)}</td>
+                    <td class="${profitClass}">${formatRupiah(profitPerUnit)}</td>
                 `;
                 tbody.appendChild(row);
             }
         }
         
+        // =====================
+        // TRANSACTION OPERATIONS
+        // =====================
         // Hapus transaksi
         function deleteTransaction(index) {
-            const transaction = transactions[index];
+            const currentData = appData.months[appData.currentMonth];
+            const transaction = currentData.transactions[index];
             
             // Kembalikan stok jika transaksi adalah penjualan
             if (transaction.type === 'income') {
                 const stockKey = `${transaction.voucherType}_${transaction.voucherName}`;
-                if (stock[stockKey]) {
-                    stock[stockKey].stock += transaction.quantity;
+                if (currentData.stock[stockKey]) {
+                    currentData.stock[stockKey].stock += transaction.quantity;
                 }
             } 
             // Kurangi stok jika transaksi adalah pembelian
             else {
                 const stockKey = `${transaction.voucherType}_${transaction.voucherName}`;
-                if (stock[stockKey]) {
-                    stock[stockKey].stock -= transaction.quantity;
+                if (currentData.stock[stockKey]) {
+                    currentData.stock[stockKey].stock -= transaction.quantity;
                     
                     // Hapus item jika stok menjadi 0
-                    if (stock[stockKey].stock <= 0) {
-                        delete stock[stockKey];
+                    if (currentData.stock[stockKey].stock <= 0) {
+                        delete currentData.stock[stockKey];
                     }
                 }
             }
             
             // Hapus transaksi
-            transactions.splice(index, 1);
+            currentData.transactions.splice(index, 1);
             
             // Perbarui UI
             saveData();
             updateUI();
         }
         
-        // Simpan data ke localStorage
-        function saveData() {
-            localStorage.setItem('pembukuan_transactions', JSON.stringify(transactions));
-            localStorage.setItem('pembukuan_stock', JSON.stringify(stock));
-            
-            // Tampilkan notifikasi
-            alert('Data berhasil disimpan!');
-        }
-        
-        // Reset data
-        function resetData() {
-            if (confirm('Apakah Anda yakin ingin mereset semua data? Data yang dihapus tidak dapat dikembalikan.')) {
-                transactions = [];
-                stock = {};
-                localStorage.removeItem('pembukuan_transactions');
-                localStorage.removeItem('pembukuan_stock');
-                updateUI();
-                alert('Data berhasil direset!');
-            }
-        }
-        
-        // Perbarui semua UI
-        function updateUI() {
-            calculateTotals();
-            updateChart();
-            updateTransactionHistory();
-            updateStockList();
-        }
-        
-        // Event listener untuk form
+        // Tambah transaksi
         document.getElementById('transaction-form').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -583,14 +823,15 @@
             };
             
             // Tambahkan transaksi ke array
-            transactions.push(transaction);
+            const currentData = appData.months[appData.currentMonth];
+            currentData.transactions.push(transaction);
             
             // Kelola stok
             const stockKey = `${voucherType}_${voucherName}`;
             
-            if (!stock[stockKey]) {
+            if (!currentData.stock[stockKey]) {
                 // Buat item baru jika belum ada
-                stock[stockKey] = {
+                currentData.stock[stockKey] = {
                     type: voucherType,
                     name: voucherName,
                     costPrice,
@@ -602,15 +843,15 @@
             // Perbarui stok
             if (isIncome) {
                 // Penjualan - kurangi stok
-                stock[stockKey].stock -= quantity;
+                currentData.stock[stockKey].stock -= quantity;
             } else {
                 // Pembelian - tambah stok
-                stock[stockKey].stock += quantity;
+                currentData.stock[stockKey].stock += quantity;
             }
             
             // Hapus item jika stok menjadi 0
-            if (stock[stockKey].stock <= 0) {
-                delete stock[stockKey];
+            if (currentData.stock[stockKey].stock <= 0) {
+                delete currentData.stock[stockKey];
             }
             
             // Reset form
@@ -618,17 +859,274 @@
             document.getElementById('quantity').value = 1;
             document.getElementById('transaction-date').value = new Date().toISOString().split('T')[0];
             
-            // Perbarui UI
+            // Perbarui UI dan simpan data
+            saveData();
             updateUI();
         });
+        
+        // =====================
+        // CLOSING STATEMENT
+        // =====================
+        // Generate closing statement
+        function generateClosingStatement() {
+            const currentMonth = appData.currentMonth;
+            const totals = calculateTotals();
+            
+            // Tentukan status bulanan
+            let status, emoji, statusClass;
+            const profitRatio = totals.totalProfit / (totals.totalIncome || 1);
+            
+            if (profitRatio > 0.2) {
+                status = "Sangat Menguntungkan";
+                emoji = "😊";
+                statusClass = "status-profit";
+            } else if (profitRatio > 0.05) {
+                status = "Menguntungkan";
+                emoji = "🙂";
+                statusClass = "status-profit";
+            } else if (totals.totalProfit > 0) {
+                status = "Biasa Saja";
+                emoji = "😐";
+                statusClass = "status-normal";
+            } else {
+                status = "Rugi";
+                emoji = "😞";
+                statusClass = "status-loss";
+            }
+            
+            // Dapatkan produk terlaris
+            let bestSeller = "Tidak ada";
+            let maxSales = 0;
+            const salesCount = {};
+            
+            appData.months[currentMonth].transactions
+                .filter(t => t.type === 'income')
+                .forEach(t => {
+                    const productKey = `${t.voucherType} ${t.voucherName}`;
+                    salesCount[productKey] = (salesCount[productKey] || 0) + t.quantity;
+                    
+                    if (salesCount[productKey] > maxSales) {
+                        maxSales = salesCount[productKey];
+                        bestSeller = productKey;
+                    }
+                });
+            
+            // Update UI
+            document.getElementById('closing-month').textContent = formatMonthName(currentMonth);
+            document.getElementById('status-emoji').textContent = emoji;
+            document.getElementById('cs-income').textContent = formatRupiah(totals.totalIncome);
+            document.getElementById('cs-expense').textContent = formatRupiah(totals.totalExpense);
+            document.getElementById('cs-profit').textContent = formatRupiah(totals.totalProfit);
+            document.getElementById('cs-status').textContent = status;
+            document.getElementById('cs-status').className = `badge-status ${statusClass}`;
+            document.getElementById('cs-total-stock').textContent = totals.totalStock;
+            document.getElementById('cs-stock-value').textContent = formatRupiah(totals.stockValue);
+            document.getElementById('cs-best-seller').textContent = bestSeller;
+            
+            // Tampilkan closing statement
+            document.getElementById('closing-statement-container').style.display = 'block';
+        }
+        
+        // Tutup bulan saat ini
+        function closeCurrentMonth() {
+            if (confirm(`Apakah Anda yakin ingin menutup bulan ${formatMonthName(appData.currentMonth)}? Stok tidak akan dibawa ke bulan berikutnya.`)) {
+                // Reset stok untuk bulan ini (tapi biarkan datanya tetap ada)
+                appData.months[appData.currentMonth].stock = {};
+                
+                // Pindah ke bulan berikutnya
+                const [year, month] = appData.currentMonth.split('-');
+                let nextMonth = parseInt(month) + 1;
+                let nextYear = parseInt(year);
+                
+                if (nextMonth > 12) {
+                    nextMonth = 1;
+                    nextYear++;
+                }
+                
+                const nextMonthKey = `${nextYear}-${String(nextMonth).padStart(2, '0')}`;
+                
+                // Jika bulan berikutnya belum ada, buat baru
+                if (!appData.months[nextMonthKey]) {
+                    appData.months[nextMonthKey] = {
+                        transactions: [],
+                        stock: {}
+                    };
+                }
+                
+                appData.currentMonth = nextMonthKey;
+                
+                // Simpan dan perbarui UI
+                saveData();
+                updateMonthSelector();
+                updateUI();
+                
+                // Sembunyikan closing statement
+                document.getElementById('closing-statement-container').style.display = 'none';
+                
+                alert(`Pembukuan bulan ${formatMonthName(appData.currentMonth)} telah dimulai!`);
+            }
+        }
+        
+        // =====================
+        // EXPORT FUNCTIONS
+        // =====================
+        // Export ke Excel
+        function exportToExcel() {
+            const currentData = appData.months[appData.currentMonth];
+            const totals = calculateTotals();
+            
+            // Siapkan data transaksi
+            const transactionData = [
+                ['Tanggal', 'Jenis', 'Jenis Voucher', 'Produk', 'Jumlah', 'Harga Modal', 'Harga Jual', 'Keuntungan', 'Keterangan']
+            ];
+            
+            currentData.transactions.forEach(t => {
+                const profit = (t.sellPrice - t.costPrice) * t.quantity;
+                transactionData.push([
+                    formatDate(t.date),
+                    t.type === 'income' ? 'Penjualan' : 'Pembelian',
+                    t.voucherType,
+                    t.voucherName,
+                    t.quantity,
+                    t.costPrice,
+                    t.sellPrice,
+                    profit,
+                    t.description || ''
+                ]);
+            });
+            
+            // Siapkan data stok
+            const stockData = [
+                ['Jenis Voucher', 'Produk', 'Stok', 'Harga Modal', 'Harga Jual', 'Keuntungan per Unit']
+            ];
+            
+            for (const key in currentData.stock) {
+                const item = currentData.stock[key];
+                const profitPerUnit = item.sellPrice - item.costPrice;
+                stockData.push([
+                    item.type,
+                    item.name,
+                    item.stock,
+                    item.costPrice,
+                    item.sellPrice,
+                    profitPerUnit
+                ]);
+            }
+            
+            // Siapkan data ringkasan
+            const summaryData = [
+                ['Ringkasan Bulanan', ''],
+                ['Bulan', formatMonthName(appData.currentMonth)],
+                ['Total Pemasukan', totals.totalIncome],
+                ['Total Pengeluaran', totals.totalExpense],
+                ['Total Keuntungan', totals.totalProfit],
+                ['Total Stok', totals.totalStock],
+                ['Nilai Stok', totals.stockValue]
+            ];
+            
+            // Buat workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Tambahkan sheet
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'Ringkasan');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(transactionData), 'Transaksi');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(stockData), 'Stok');
+            
+            // Export ke file
+            const monthName = formatMonthName(appData.currentMonth).replace(' ', '_');
+            XLSX.writeFile(wb, `Pembukuan_Konter_Pulsa_${monthName}.xlsx`);
+        }
+        
+        // Export ke PDF
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const monthName = formatMonthName(appData.currentMonth);
+            const totals = calculateTotals();
+            
+            // Judul
+            doc.setFontSize(18);
+            doc.text(`Pembukuan Konter Pulsa - ${monthName}`, 105, 15, null, null, 'center');
+            
+            // Ringkasan
+            doc.setFontSize(12);
+            doc.text(`Total Pemasukan: ${formatRupiah(totals.totalIncome)}`, 20, 30);
+            doc.text(`Total Pengeluaran: ${formatRupiah(totals.totalExpense)}`, 20, 40);
+            doc.text(`Total Keuntungan: ${formatRupiah(totals.totalProfit)}`, 20, 50);
+            doc.text(`Total Stok: ${totals.totalStock} item`, 20, 60);
+            doc.text(`Nilai Stok: ${formatRupiah(totals.stockValue)}`, 20, 70);
+            
+            // Transaksi
+            doc.addPage();
+            doc.setFontSize(16);
+            doc.text('Daftar Transaksi', 105, 15, null, null, 'center');
+            
+            const transactionData = [
+                ['Tanggal', 'Jenis', 'Produk', 'Jumlah', 'Keuntungan']
+            ];
+            
+            appData.months[appData.currentMonth].transactions.forEach(t => {
+                const profit = (t.sellPrice - t.costPrice) * t.quantity;
+                transactionData.push([
+                    formatDate(t.date),
+                    t.type === 'income' ? 'Penjualan' : 'Pembelian',
+                    `${t.voucherType} ${t.voucherName}`,
+                    t.quantity,
+                    formatRupiah(profit)
+                ]);
+            });
+            
+            doc.autoTable({
+                head: transactionData.slice(0, 1),
+                body: transactionData.slice(1),
+                startY: 25,
+                theme: 'grid',
+                headStyles: { fillColor: [67, 97, 238] }
+            });
+            
+            // Stok
+            doc.addPage();
+            doc.setFontSize(16);
+            doc.text('Daftar Stok', 105, 15, null, null, 'center');
+            
+            const stockData = [
+                ['Jenis', 'Produk', 'Stok', 'Harga Modal', 'Harga Jual']
+            ];
+            
+            for (const key in appData.months[appData.currentMonth].stock) {
+                const item = appData.months[appData.currentMonth].stock[key];
+                stockData.push([
+                    item.type,
+                    item.name,
+                    item.stock,
+                    formatRupiah(item.costPrice),
+                    formatRupiah(item.sellPrice)
+                ]);
+            }
+            
+            doc.autoTable({
+                head: stockData.slice(0, 1),
+                body: stockData.slice(1),
+                startY: 25,
+                theme: 'grid',
+                headStyles: { fillColor: [67, 97, 238] }
+            });
+            
+            // Simpan PDF
+            doc.save(`Pembukuan_Konter_Pulsa_${monthName.replace(' ', '_')}.pdf`);
+        }
+        
+        // =====================
+        // INITIALIZATION
+        // =====================
+        // Set tanggal default ke hari ini
+        document.getElementById('transaction-date').value = new Date().toISOString().split('T')[0];
         
         // Event listener untuk filter
         document.getElementById('filter-type').addEventListener('change', updateTransactionHistory);
         
-        // Set tanggal default ke hari ini
-        document.getElementById('transaction-date').value = new Date().toISOString().split('T')[0];
-        
-        // Inisialisasi UI
+        // Inisialisasi aplikasi
+        initAppData();
         updateUI();
     </script>
 </body>
